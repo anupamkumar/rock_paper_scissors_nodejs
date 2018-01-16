@@ -1,0 +1,32 @@
+{
+  "name": "RPSOnline",
+  "version": "0.1.1",
+  "engines": {
+    "node": "0.12.7"
+  },
+  "description": "Node JS and Websocket Implementation of Rock Player Scissor game online on web and mobile",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "HTML5",
+    "Node",
+    "JS",
+    "Rock",
+    "Paper",
+    "Scissors",
+    "Game"
+  ],
+  "author": "Anupam Kumar",
+  "license": "MIT",
+  "dependencies": {
+    "node-uuid": "~1.4.2",
+    "websocket": "~1.0.17",
+    "log4js": "~0.6.22",
+    "redis": "~0.12.1",
+    "hiredis": "~0.2.0"
+  }
+}
+

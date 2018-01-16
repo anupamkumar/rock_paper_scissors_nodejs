@@ -1,0 +1,573 @@
+<!DOCTYPE HTML>
+<html lang='en'>
+	<head>
+		<meta charset='utf-8'>
+		<meta name="description" content="Rock Paper Scissors Online game">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="keywords" content="Rock, Paper, Scissors, Online, Game, Singleplayer, Multiplayer, chat, lobby, mobile game, HTML5 game">
+		<meta name="author" content="Anupam Kumar">
+		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>	
+		<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>				
+		<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" media="screen"/>
+		<title>Rock Paper Scissors Online | Multiplayer</title>
+		<script>
+			window.addEventListener("load",function(evt) {
+			//defs and inits
+				var socket;
+				var gamesessionid;
+				var username;
+				var displayedTS, clickedTS;
+				//html elements
+				var navchat = document.getElementById("navchat");
+				var navscore = document.getElementById("navscore");				
+				var chatbox = document.getElementById("chatbox");
+				var send = document.getElementById("send");
+				var chatHistory = document.getElementById("chathistory");
+				var heading = document.getElementById("vs");				
+				var playerdetails = document.getElementById("playerdetails");
+				var playerchat = document.getElementById("playerchat");
+				var rpsimages = document.getElementById("RPSImg");
+				var rpsbox = document.getElementById("RPSG");
+				var rpsboxother = document.getElementById("other");
+				var rpsboxplayer = document.getElementById("player");
+				var infobox = document.getElementById("info");
+				var gameround = document.getElementById("gameround");
+				var readybutton = document.getElementById("ready");
+				var rbdiv = document.getElementById("readybutton");	
+				var st_hostst = document.getElementById("ps-host-stat");
+				var st_joinst = document.getElementById("ps-join-stat");
+				var sc_hostname = document.getElementById("psc-host-name");
+				var sc_joinname = document.getElementById("psc-join-name");
+				var sc_hostsc = document.getElementById("psc-host-score");
+				var sc_joinsc = document.getElementById("psc-join-score");
+				var countdown = document.getElementById("countdown");
+				var anotherroundbutton = document.getElementById("anotherroundbutton");
+				var anotherround = document.getElementById("anotherround");
+				var countdownImgs = [document.getElementById("cd1"),document.getElementById("cd2"),document.getElementById("cd3")];				
+				var playerrockimage,playerpaperimage,playerscissorimage,
+				otherrockimage,otherpaperimage,otherscissorimage;
+				
+				//function defs
+				
+				function showhidediv(evt) {
+					switch(evt.target.id) {
+						case 'achat':
+							if(playerchat.hidden) {
+								playerchat.hidden = false;
+								evt.target.innerHTML = "Hide Chat";
+							}								
+							else {
+								playerchat.hidden = true;
+								evt.target.innerHTML = "Show Chat";
+							}								
+							break;
+						case 'adetails':
+							if(playerdetails.hidden) {
+								evt.target.innerHTML = "Hide Player Details";
+								playerdetails.hidden = false;
+							}								
+							else {
+								evt.target.innerHTML = "Show Player Details";
+								playerdetails.hidden = true;
+							}								
+							break;		
+					}
+				}
+				
+				function handleSockOpen(evt) {					
+					var jsonMsg = { 'type':'report','sessionid':gamesessionid,'un':username};
+					socket.send(JSON.stringify(jsonMsg));				
+				}
+				
+				function handleMessages(evt) {
+					var jsonMsg = JSON.parse(evt.data);
+					console.log(evt.data);
+					var msgType = jsonMsg['type'];
+					switch(msgType) {
+						case 'status':
+							updatePlayerInfo(jsonMsg);
+							break;
+						case 'chatsuccess':
+							updateChat(jsonMsg);
+							break;
+						case 'chatfailure':
+							alert("You're friend has not joined yet. No one to send chat message to. Ask your friend to join so that you may chat with them");
+							break;
+						case 'scoreupdate':
+							updateScores(jsonMsg);
+							break;
+						case 'disconnect':
+							notify(jsonMsg);
+							break;
+						case 'readytoplay':
+							updateRoundStatus(jsonMsg);
+							break;
+						case 'startroundconfirm':							
+							startround();
+							break;
+						case 'postresultfail':
+							postresultfail(jsonMsg);
+							break;
+						case 'postresultsuccess':
+							postresultsuccess(jsonMsg);
+							break;
+						case 'anotherroundvoteres':
+							anotherroundvote(jsonMsg);
+							break;
+						case 'anotherroundconfirmed':
+							reset();
+							break;
+					}
+				}
+				
+				function reset() {
+					st_hostst.innerHTML = "joined";
+					st_joinst.innerHTML = "joined";
+					rbdiv.hidden = false;
+					readybutton.hidden = false;
+					readybutton.disabled = false;
+					anotherround.hidden = true;					
+					rpsimages.innerHTML = "";
+					rpsbox.hidden = true;
+					countdown.hidden = false;
+					for(var i=0;i<countdownImgs.length;i++) {
+						countdownImgs[i].hidden = true;
+					}
+				}
+				
+				function anotherroundvote(jsonMsg) {
+					infobox.innerHTML = jsonMsg['whovoted'] + " wants to play another round. Click on 'Do another round' button to play another round!"; 
+				}
+				
+				function postresultfail(jsonMsg) {
+					infobox.innerHTML = jsonMsg['result'];
+					playerchat.hidden = false;
+					infobox.hidden = false;					
+					readybutton.hidden = true;
+					readybutton.enabled = true;
+					anotherround.hidden = false;
+				}
+				
+				function postresultsuccess(jsonMsg) {
+					infobox.hidden = false;
+										
+					anotherround.hidden = false;	
+					anotherroundbutton.disabled = false;					
+					sc_hostsc.innerHTML = jsonMsg['host-score'];
+					sc_joinsc.innerHTML = jsonMsg['join-score'];
+					if(jsonMsg['result'] == "draw" && sc_hostname.innerHTML == username) 
+						infobox.innerHTML = "<h3 class='bg-warning'><strong>It's a draw!</strong> "+sc_joinname.innerHTML + " also chose " + jsonMsg['join-ans']+"</h3>";
+					else if(jsonMsg['result'] == "draw" && sc_joinname.innerHTML == username) 
+						infobox.innerHTML = "<h3 class='bg-warning'><strong>It's a draw!</strong> "+sc_hostname.innerHTML + " also chose " + jsonMsg['join-ans']+"</h3>";
+					else if(jsonMsg['result'] == "host wins" && username == sc_hostname.innerHTML) 
+						infobox.innerHTML = "<h3 class='bg-success'><strong>Congrat's you win!</strong> " + sc_joinname.innerHTML + " chose " + jsonMsg['join-ans']+"</h3>";					
+					else if(jsonMsg['result'] == "host wins" && username == sc_joinname.innerHTML)
+						infobox.innerHTML = "<h3 class='bg-danger'>"+sc_hostname.innerHTML + " chose " + jsonMsg['host-ans'] +". <strong>You loose.</strong></h3>";
+					else if(jsonMsg['result'] == "join wins" && username == sc_joinname.innerHTML)
+						infobox.innerHTML = "<h3 class='bg-success'><strong>Congrat's you win!</strong> " + sc_hostname.innerHTML + " chose " + jsonMsg['host-ans']+"</h3>";
+					else if(jsonMsg['result'] == "join wins" && username == sc_hostname.innerHTML)
+						infobox.innerHTML = "<h3 class='bg-danger'>"+sc_joinname.innerHTML + " chose " + jsonMsg['join-ans'] +". <strong>You loose.</strong></h3>";
+					if(username == sc_joinname.innerHTML) {
+						if(jsonMsg['join-ans'] == "rock") {
+							playerpaperimage.className += " hidden";
+							playerscissorimage.className += " hidden";
+							playerrockimage.className += " center-block"
+						}
+						if(jsonMsg['join-ans'] == "paper") {
+							playerrockimage.className += " hidden";
+							playerscissorimage.className += " hidden";
+							playerpaperimage.className += " center-block"
+						}
+						if(jsonMsg['join-ans'] == "sissor") {
+							playerpaperimage.className += " hidden";
+							playerrockimage.className += " hidden";
+							playerscissorimage.className += " center-block"
+						}
+						if(jsonMsg['host-ans'] == "rock") {
+							otherpaperimage.className += " hidden";
+							otherscissorimage.className += " hidden";
+							otherrockimage.className+=" center-block";
+						}
+						if(jsonMsg['host-ans'] == "paper") {
+							otherrockimage.className += " hidden";
+							otherscissorimage.className += " hidden";
+							otherpaperimage.className+=" center-block";
+						}
+						if(jsonMsg['host-ans'] == "sissor") {
+							otherpaperimage.className += " hidden";
+							otherrockimage.className += " hidden";
+							otherscissorimage.className+=" center-block";
+						}
+					}
+					else if(username == sc_hostname.innerHTML) {
+						if(jsonMsg['join-ans'] == "rock") {
+							otherpaperimage.className += " hidden";
+							otherscissorimage.className += " hidden";
+							otherrockimage.className+=" center-block";
+						}
+						if(jsonMsg['join-ans'] == "paper") {
+							otherrockimage.className += " hidden";
+							otherscissorimage.className += " hidden";
+							otherpaperimage.className+=" center-block";
+						}
+						if(jsonMsg['join-ans'] == "sissor") {
+							otherpaperimage.className += " hidden";
+							otherrockimage.className += " hidden";
+							otherscissorimage.className+=" center-block";
+						}
+						if(jsonMsg['host-ans'] == "rock") {
+							playerpaperimage.className += " hidden";
+							playerscissorimage.className += " hidden";
+							playerrockimage.className += " center-block"
+						}
+						if(jsonMsg['host-ans'] == "paper") {
+							playerrockimage.className += " hidden";
+							playerscissorimage.className += " hidden";
+							playerpaperimage.className += " center-block"
+						}
+						if(jsonMsg['host-ans'] == "sissor") {
+							playerpaperimage.className += " hidden";
+							playerrockimage.className += " hidden";
+							playerscissorimage.className += " center-block"
+						}
+					}
+				}
+				
+				function startround() {
+					infobox.hidden = true;
+					playerchat.hidden = true;					
+					rbdiv.hidden = true;
+					var i=2;
+					var show = function() {
+						if(i==-1) {
+							countdown.hidden = true;
+							countdownImgs[0].className += "center-block hidden";
+							rpsbox.hidden = false;
+							displayedTS = new Date().getTime();
+							return;
+						}
+						else {
+							if(i != 2) {
+								countdownImgs[i+1].className += "center-block hidden";
+							}
+							countdownImgs[i].className = "center-block";
+							setTimeout(show,1000);
+							i--;
+						}
+					}
+					show();					
+				}
+				
+				function setCountDownImages() {
+					var basepath = "html/images/set";
+					var baserempath = "/countdown/";
+					var pngs = ["1.png","2.png","3.png"];
+					var randomSet = 1+Math.floor(Math.random()*4);
+					for(i=0;i<3;i++) {
+						document.getElementById("cdi"+i).src = basepath+randomSet+baserempath+pngs[i];
+					}
+				}
+				
+				function updateRoundStatus(jsonMsg) {
+					if(jsonMsg['status'] == 'host-ready')
+						st_hostst.innerHTML = "Ready";
+					else 
+						st_joinst.innerHTML = "Ready";
+					if(jsonMsg['rpsImgs'] !=null)
+						setRPSImages(jsonMsg['rpsImgs']);
+					setCountDownImages();		
+					if(st_joinst.innerHTML == "Ready" && st_hostst.innerHTML == "Ready") {
+						info.innerHTML = "";
+						var newMsg = {
+							'type':'startround',
+							'sessionid':gamesessionid,
+							'un':username
+						};
+						var checkReadyState = function() {
+							if(document.readyState == "complete" || 
+							document.readyState == "loaded") {
+								socket.send(JSON.stringify(newMsg));	
+							}
+							else {
+								setTimeout(checkReadyState,30);
+							}
+						}
+						checkReadyState();											
+					}
+					else if(st_joinst.innerHTML != "Ready") {
+						info.innerHTML = "Waiting for "+sc_joinname.innerHTML+" to ready up...";
+					}
+					else if(st_hostst.innerHTML != "Ready") {
+						info.innerHTML = "Waiting for "+sc_hostname.innerHTML+" to ready up...";
+					}
+				}
+				
+				function setRPSImages(rpsImgs) {
+					var template= "<img src='[[imgurl]]' id='[[type]]Img[[i]]' class=' img-thumbnail img-rounded' width=33% style='min-height:80px;max-height:200px;' value='[[type]]'>";
+					var rocks = [],papers =[], sissors=[];
+					rpsimages.innerHTML += '<hr>';
+					for(var i=0;i<2;i++) {
+						rocks[i] = template.replace("[[imgurl]]",rpsImgs['rockImg'][i]).replace("[[type]]","rock").replace("[[i]]",i.toString());
+						papers[i] = template.replace("[[imgurl]]",rpsImgs['paperImg'][i]).replace("[[type]]","paper").replace("[[i]]",i.toString());
+						sissors[i] = template.replace("[[imgurl]]",rpsImgs['sissorImg'][i]).replace("[[type]]","sissor").replace("[[i]]",i.toString());
+						rpsimages.innerHTML += rocks[i] + papers[i] + sissors[i];
+						rpsimages.innerHTML += '<hr>';											
+					}
+					rpsboxplayer.innerHTML = "<h4>"+username+"</h4>";
+					if(sc_hostname.innerHTML == username) {
+						rpsboxother.innerHTML = "<h4>"+sc_joinname.innerHTML+"</h4>";
+					}
+					else {
+						rpsboxother.innerHTML = "<h4>"+sc_hostname.innerHTML+"</h4>";
+					}
+					playerrockimage = document.getElementById("rockImg1");
+					playerpaperimage = document.getElementById("paperImg1");
+					playerscissorimage = document.getElementById("sissorImg1");
+					otherrockimage = document.getElementById("rockImg0");
+					otherpaperimage = document.getElementById("paperImg0");
+					otherscissorimage = document.getElementById("sissorImg0");
+					playerrockimage.addEventListener("click",processPlayerResponse);
+					playerpaperimage.addEventListener("click",processPlayerResponse);
+					playerscissorimage.addEventListener("click",processPlayerResponse);
+					playerrockimage.addEventListener("error",loadDefaultImg);
+					playerpaperimage.addEventListener("error",loadDefaultImg);
+					playerscissorimage.addEventListener("error",loadDefaultImg);
+					otherrockimage.addEventListener("error",loadDefaultImg);
+					otherpaperimage.addEventListener("error",loadDefaultImg);
+					otherscissorimage.addEventListener("error",loadDefaultImg);
+				}
+				
+				function loadDefaultImg(evt) {
+					console.log(evt);
+					if(evt.target.id.indexOf("rock") > -1) { 
+						console.log(evt.target.id +" bad img");
+						evt.target.src = "/html/images/defaultRPS/rock.png";
+						console.log(evt.target);
+					}
+					else if(evt.target.id.indexOf("paper") > -1) {
+						console.log(evt.target.id +" bad img");
+						evt.target.src = "/html/images/defaultRPS/paper.png";
+						console.log(evt.target);
+					}
+					else if(evt.target.id.indexOf("sissor") > -1) {
+						console.log(evt.target.id +" bad img");
+						evt.target.src = "/html/images/defaultRPS/sissor.png";
+						console.log(evt.target);
+					}					
+				}
+				
+				function processPlayerResponse(evt) {
+					var playeranswer;
+					clickedTS = new Date().getTime();					
+					if(evt.target.id.indexOf("rock") > -1) {
+						playeranswer = "rock";						
+					}
+					else if(evt.target.id.indexOf("paper") > -1) {
+						playeranswer = "paper";						
+					}
+					else if(evt.target.id.indexOf("sissor") > -1) {
+						playeranswer = "sissor";						
+					}
+					playerscissorimage.disabled = true;
+					playerpaperimage.disabled = true;
+					playerrockimage.disabled = true;
+					var payload = {
+						'type':'playeranswer',
+						'sessionid':gamesessionid,
+						'un':username,
+						'answer':playeranswer,
+						'answerTS': clickedTS,
+						'dispTS': displayedTS
+					};
+					socket.send(JSON.stringify(payload));
+				}
+				function updateChat(jsonMsg) {
+					var localetime = new Date(jsonMsg['saytime']).toLocaleTimeString();
+					if(jsonMsg['sayer'] == username) 
+						chatHistory.innerHTML = "<div class='bg-info'>("+localetime+")<strong>"+jsonMsg['sayer']+" said:</strong> "+jsonMsg['sayermsg']+"</div>" + chatHistory.innerHTML;
+					else
+						chatHistory.innerHTML = "<div class='bg-danger'>("+localetime+")<strong>"+jsonMsg['sayer']+" said:</strong> "+jsonMsg['sayermsg']+"</div>" + chatHistory.innerHTML;					
+				}
+				
+				function updatePlayerInfo(jsonMsg) {
+					heading.innerHTML = "<h2>"+jsonMsg['host-player']+" VS "+jsonMsg['join-player']+"</h2>";					
+					st_hostst.innerHTML = jsonMsg['host-status'];					
+					st_joinst.innerHTML = jsonMsg['join-status'];
+					sc_hostname.innerHTML = jsonMsg['host-player'];
+					sc_hostsc.innerHTML = 0;
+					sc_joinname.innerHTML =jsonMsg['join-player'];
+					sc_joinsc.innerHTML= 0;					
+					playerdetails.hidden = false;
+					if(st_joinst.innerHTML == "joined" && st_hostst.innerHTML == "joined") {
+						rbdiv.hidden = false;
+						readybutton.enabled = true;
+					}
+				}
+				
+				function sendAJAX(requestURL,callback) {
+					var xmlhttp = new XMLHttpRequest();
+					xmlhttp.onreadystatechange = function() {
+						if(xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+							try {
+								var jsonRes = JSON.parse(xmlhttp.responseText);
+								callback(jsonRes);
+							}
+							catch(error) {
+								alert(error);
+							}
+						}
+					}
+					xmlhttp.open("GET",requestURL,true);
+					xmlhttp.send();
+				}
+				
+				function parseCookie() {					
+					var cookie = document.cookie.split(";");
+					for(var i=0;i<cookie.length;i++) {				
+						if(cookie[i].indexOf("gamesessionid") > -1) {
+							gamesessionid = cookie[i].split("=")[1];
+						}
+						if(cookie[i].indexOf("username") > -1) {
+							username = cookie[i].split("=")[1];
+						}
+					}					
+				}
+				
+				function notify(jsonMsg) {
+					playerdetails.hidden = false;
+					if(sc_hostname.innerHTML == jsonMsg['whodied']) 
+						st_hostst.innerHTML = "Disconnected";
+					else
+						st_joinst.innerHTML = "Disconnected";
+						readybutton.disabled = true;
+						chatbox.disabled = true;
+					info.innerHTML = "<p>Unfortunately, "+jsonMsg['whodied']+" is disconnected from the lobby. We cannot bring him back into the lobby. Ask him/her to host a new game room that you can join or <a href='http://"+window.location.hostname+"/host'>host</a> a new game room and invite your friend."
+				}
+				
+				//event handle and init calls
+				parseCookie();
+				navchat.addEventListener("click",showhidediv);				
+				navscore.addEventListener("click",showhidediv);
+				
+				sendAJAX("/wp?gsi="+gamesessionid+"&un="+username,function(jsonRes) {				
+					if(jsonRes['stat'] == 'OK') {
+						socket = new WebSocket("wss://"+window.location.hostname+"/wp");
+						socket.addEventListener("error",function(error) {													
+							socket = new WebSocket("ws://"+window.location.hostname+":5000/wp");	
+							socket.addEventListener("open",handleSockOpen);
+							socket.addEventListener("message",handleMessages);		
+						});
+						socket.addEventListener("open",handleSockOpen);
+						socket.addEventListener("message",handleMessages);						
+					}
+					else {
+						window.location = "/host";						
+					}
+				});				
+				chatbox.addEventListener("keyup",function(evt) {
+													
+					if(evt.keyCode == 13 && chatbox.value.length > 0) {
+						var test = chatbox.value.split('\n');
+						if(test.length == 2 && test[0].length > 0) {
+							var jsonMsg = {
+								"type":"chat",
+								"sessionid":gamesessionid,
+								"un":username,
+								"chatmsg":chatbox.value
+							};
+							socket.send(JSON.stringify(jsonMsg));
+						}						
+						chatbox.value = "";
+					}
+				});				
+				readybutton.addEventListener("click",function(evt) {
+					readybutton.disabled = true;					
+					var jsonMsg = {
+						"type":"readytoplay",
+						"sessionid":gamesessionid,
+						"un":username
+					};
+					socket.send(JSON.stringify(jsonMsg));						
+				});				
+				anotherroundbutton.addEventListener("click",function(evt) {	
+					anotherroundbutton.disabled = true;				
+					var jsonMsg = {
+						"type":"anotherroundvote",
+						"sessionid":gamesessionid,
+						"un":username
+					};
+					socket.send(JSON.stringify(jsonMsg));
+				});
+			});
+		</script>
+	</head>
+	<body style="padding-top: 72px;">
+	<div class="container">
+		<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation"> 	
+			<div class="container">
+		 		<a class="navbar-brand" href="/"><img alt="Brand" src="html/images/ico.png" width='160px' height='42px'></a>			
+			    <button class="navbar-toggle" data-toggle="collapse" data-target="#myNav">
+			    	<span class="icon-bar"></span>
+			    	<span class="icon-bar"></span>
+			    	<span class="icon-bar"></span>
+			    </button>
+			 	<div class="collapse navbar-collapse" id="myNav">			 	
+				 	<ul class="nav navbar-nav navbar-right">
+				 		<li id='navchat'><a href="#" class="main-nav" id='achat'>Hide Chat</a></li>			 		
+				 		<li id='navscore'><a href="#" class="main-nav" id='adetails'>Hide Player Details</a></li>
+				 		<li id='host'><a href="/host" class="main-nav">Host Game</a></li>
+				 		<li id='join'><a href="/join" class="main-nav">Join Game</a></li>
+						<li id='about'><a href="/about" class="main-nav">About</a></li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+	<div id="heading" class="content row">
+		<div class="col-md-9 text-center" id="vs"></div>
+		<div class="col-md-3" id="playerdetails" class="pull-right" hidden>
+			<h4 class="text-center">Player Details</h4>
+			<table class="table table-condensed">
+			<tr><th>Player</th><th>Points</th><th>Status</th></tr>
+			<tr><td id='psc-host-name'></td><td id='psc-host-score'>0</td><td id='ps-host-stat'></td></tr>
+			<tr><td id='psc-join-name'></td><td id='psc-join-score'>0</td><td id='ps-join-stat'></td></tr>
+			</table>
+		</div>		
+	</div>
+	<div class="content row" id="players">		
+		
+	    <div class="col-md-9" id="gameround">
+	    	<div class="text-center text-muted" id="info"></div>		
+		<div class="text-center" id="readybutton" hidden>
+			<input id="ready" class="btn btn-primary" type="button" value="I AM READY" />			
+		</div>
+		<div class="text-center" id="anotherround" hidden>
+			<input id="anotherroundbutton" class="btn btn-primary" type="button" value="Do Another Round!"/>
+		</div>
+		  <div class="" id="countdown">
+			<div id="cd1" hidden>
+				<img src="" width=240 height=240 class="center-block" id="cdi0">
+			</div>
+			<div id="cd2" hidden>
+				<img src="" width=240 height=240 class="center-block" id="cdi1">
+			</div>
+			<div id="cd3" hidden>
+				<img src="" width=240 height=240 class="center-block" id="cdi2">
+			</div>
+		 </div>
+		<div class="" id="RPSG" hidden>
+			<div id="other" class="bg-danger text-center"></div>
+			<div id="RPSImg"></div>
+			<div id="player" class="bg-info text-center"></div>
+		</div>
+	  </div>
+	  <div class="col-md-3 pull-right panel panel-default" id="playerchat">
+		 <div class="panel-heading"><h4 class="panel-title">Players Chat</h4></div>
+		<div class="panel-body" style="overflow-y: scroll; width: 100%; height: 80%; max-height:400px; min-height: 300px; display: flex; flex-direction: column-reverse;" id="chathistory"></div>
+		<div class="panel-footer" id="chatinputbox"><textarea id="chatbox" rows=3 cols=26 style="resize:none;"></textarea></div>
+	</div>
+   </div>	
+	</div>
+	</body>
+</html>

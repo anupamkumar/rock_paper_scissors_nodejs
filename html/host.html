@@ -1,0 +1,128 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+	<meta charset='utf-8'>
+	<meta name="description" content="Rock Paper Scissors Online game">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="keywords" content="Rock, Paper, Scissors, Online, Game, Singleplayer, Multiplayer, chat, lobby, mobile game, HTML5 game">
+	<meta name="author" content="Anupam Kumar">
+	<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+	<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>	
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>				
+	<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css" rel="stylesheet" media="screen">
+	<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" media="screen"/>
+	<title>Rock Paper Scissors Online | Host A Game</title>
+	<script type="text/javascript">
+	 	var baseurl=window.location.hostname;
+	 	var validUN = false;
+		function sendHostRequest() {
+			var xmlhttp=new XMLHttpRequest();
+			var un = document.getElementById('un').value;
+			var um = document.getElementById('mode').value;
+			var pa = document.getElementById('pa').value;
+			var sex = document.getElementById('sex').value;
+			xmlhttp.onreadystatechange = function() {
+				if(xmlhttp.readyState==4 && xmlhttp.status == 200) {
+					document.getElementById("code").innerHTML = xmlhttp.responseText;
+				}
+			}
+			if(validUN) {
+				xmlhttp.open("GET","/host?un="+un+"&ua="+pa+"&mode="+um+"&sex="+sex, true);
+				xmlhttp.send();
+			}			
+		}
+
+		function startsingleplayer() {
+			window.location = "/singleplayergame";
+		}
+	
+		function startmp() {
+			var form1 = document.createElement("form");
+			var input1 = document.createElement("input");
+			var input2 = document.createElement("input");
+			form1.action = "/multiplayer";
+			form1.method = "POST";
+			input1.name = "roomcode";
+			input1.value = document.getElementById('v').value;
+			input2.name = "username";
+			input2.value = document.getElementById('u').value;		
+			form1.appendChild(input1);
+			form1.appendChild(input2);
+			input1.hidden = true;
+			input2.hidden = true;
+			document.body.appendChild(form1);
+			form1.submit();
+		}
+		
+		function unvalidate() {
+			var un = document.getElementById("un").value;
+			if(document.getElementById("un").value.length >= 2) {
+				document.getElementById("undiv").className += " has-success has-feedback";
+				document.getElementById("undiv").innerHTML += '<span id="mark" class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>';
+				document.getElementById("un").value = un;
+				validUN = true;
+			}
+			else {
+				document.getElementById("undiv").className += " has-error has-feedback";
+				document.getElementById("undiv").innerHTML += '<span id="mark" class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>';
+				document.getElementById("un").value = un;
+				validUN = false;
+			}
+		}
+		
+		function unresetValidate() {
+			document.getElementById("undiv").className = "form-group";
+			var mark = document.getElementById("mark");
+			if(mark != null)
+				mark.parentNode.removeChild(mark);
+		}
+	</script>
+</head>
+<body style="padding-top: 72px;">
+<div class="container">
+<nav class="navbar navbar-inverse navbar-fixed-top"> 	
+	<div class="container">
+		<a class="navbar-brand" href="/"><img alt="Brand" src="html/images/ico.png" width='160px' height='42px'></a>		
+		<button class="navbar-toggle" data-toggle="collapse" data-target="#myNav">
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+		</button>	
+	 <div class="collapse navbar-collapse" id="myNav">
+	 	<ul class="nav navbar-nav navbar-right">
+	 		<li class="active" id='host'><a href="/host" class="main-nav">Host Game</a></li>
+	 		<li id='join'><a href="/join" class="main-nav">Join Game</a></li>
+			<li id='about'><a href="/about" class="main-nav">About</a></li>
+		</ul>
+	</div>
+</div>
+</nav>
+<div id="code">
+<h3>Hi! Enter the following information to host a new game</h3>
+<div class="content row ">
+	<div class="col-md-4">
+	</div>
+	<div class="col-md-4 panel panel-default">
+	<div class="form-group" id="undiv" >
+	<label for="un">Name:</label><input onblur="unvalidate()" onfocus="unresetValidate()" class="form-control" type="text" id="un"/>	
+	</div>
+	<div class="form-group">
+	<label for="pa"> Age: (optional, but appreciate the info)</label><input type="number" class="form-control" id="pa"/>
+	</div>
+	<div class="form-group">
+	<label for="sex"> Gender: (optional, but appreciate the info)</label><select id="sex" class="form-control"><option value="wonttell">Won't tell</option><option value="male">Male</option><option value="female">Female</option></select>
+	</div>
+	<div class="form-group">
+	<label for="mode">Mode:</label><select id="mode" class="form-control"><option value="sp">Single Player (vs A.I)</option><option value="mp">Multi Player</option></select>
+	</div>
+	<div class="form-group span6 pull-right">
+	<input type="button" onclick="sendHostRequest()" value="Host" class="btn btn-primary btn-lg btn btn-primary btn-lg" /></div>
+	</div>
+	</div>
+	<div class="col-md-4">
+	</div>
+</div>
+</div>
+</div>
+</body>
+</html>

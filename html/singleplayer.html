@@ -1,0 +1,296 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<meta charset='utf-8'>
+		<meta name="description" content="Rock Paper Scissors Online game">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="keywords" content="Rock, Paper, Scissors, Online, Game, Singleplayer, Multiplayer, chat, lobby, mobile game, HTML5 game">
+		<meta name="author" content="Anupam Kumar">
+		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>	
+		<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>				
+		<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" media="screen"/>
+		<title>Rock Paper Scissors Online | Single Player</title>
+		<script type="text/javascript">
+		 	var baseurl=window.location.hostname;
+		 	var resJSON;
+			var rpcImageDisplayTimeStamp, rpcImageClickTimeStamp;
+			var hideTable = true;
+			var cscore=0,pscore=0;
+			function requestAjax(requesturl) {
+				var xmlhttp=new XMLHttpRequest();	
+				xmlhttp.onreadystatechange = function() {			
+					if(xmlhttp.readyState==4 && xmlhttp.status == 200) {
+						try {
+							resJSON = JSON.parse(xmlhttp.responseText);
+						} catch(error) {
+							reset();
+						}
+						if(requesturl == "/reqRPS") {
+							setCountDownImages();		
+							pullWebImgs(resJSON);
+						}
+					}			
+				}
+				xmlhttp.open("GET",requesturl, true);
+				xmlhttp.send();
+			}
+			
+			function updateScores() {
+				document.getElementById('aiscore').innerHTML = resJSON['cscore'];
+				document.getElementById('pscore').innerHTML =resJSON['pscore'];
+				hideTable = resJSON['hideTable'];
+				showhidescore();
+			}
+
+			function loadDefaultImg(entity,n) {
+				//TODO:ENTITY APPEND CORRECT SOURCE 
+				document.getElementById(entity+"Img"+n).src = "/html/images/defaultRPS/"+entity+".png";		
+			}
+	
+			function pullWebImgs(resJSON) {
+				var imgString = "";
+				imgString = imgString +"<div class='row text-center'><h4>A.I</h4></div>";
+				imgString = imgString +"<div class='content row'><img width=33% style='min-height:80px;max-height=200px' class=' img-thumbnail img-rounded' src="+resJSON["rockImg"][0]+" onerror='loadDefaultImg(\"rock\",0)' id='rockImg0' >";
+				imgString = imgString +"<img width=33% style='min-height:80px;max-height:200px;' class=' img-thumbnail img-rounded' src="+resJSON["paperImg"][0]+" onerror='loadDefaultImg(\"paper\",0)' id='paperImg0'   >";
+				imgString = imgString +"<img width=33% style='min-height:80px;max-height:200px;' class=' img-thumbnail img-rounded'  src="+resJSON["sissorImg"][0]+" onerror='loadDefaultImg(\"sissor\",0)' id='sissorImg0'  ></div>";
+				imgString = imgString +"<hr>";
+				imgString = imgString +"<div class='content row'><img width=33% style='min-height:80px;max-height:200px;' class='img-thumbnail img-rounded' src="+resJSON["rockImg"][1]+" onerror='loadDefaultImg(\"rock\",1)' id='rockImg1' onclick='evalIp(\"rock\")' >";
+				imgString = imgString +"<img width=33% style='min-height:80px;max-height:200px;' class=' img-thumbnail img-rounded' src="+resJSON["paperImg"][1]+" onerror='loadDefaultImg(\"paper\",1)' id='paperImg1'  onclick='evalIp(\"paper\")' >";
+				imgString = imgString +"<img width=33%  style='min-height:80px;max-height:200px;' class=' img-thumbnail img-rounded'  src="+resJSON["sissorImg"][1]+" onerror='loadDefaultImg(\"sissor\",1)' id='sissorImg1' onclick='evalIp(\"sissor\")'></div>";
+				imgString = imgString +"<div class='row text-center'><h4>You</h4></div>";
+				document.getElementById("RPSImg").innerHTML = imgString;
+				printImgSrc();
+				var checkReadyState = function() {
+					if(document.readyState == "complete" || document.readyState == "loaded") {
+						document.getElementById("ready").innerHTML = "<input type='button' class='btn btn-primary btn-lg btn btn-primary btn-lg' value='Start!' onclick='start()'></input>";
+					}
+					else {
+						setTimeout(checkReadyState,30);
+					}
+				}
+				checkReadyState();	
+			}
+
+		function start() {		
+			requestAjax('/computeranswer');
+			document.getElementById("countdown").hidden = false;
+			document.getElementById("ready").hidden = true;	
+			var i=3;		
+			var show = function() {
+				if(i==0) {
+					document.getElementById("countdown").hidden = true;
+					document.getElementById("RPSImg").hidden = false;
+					document.getElementById("RPSInfo").hidden = false;
+					rpcImageDisplayTimeStamp = new Date().getTime();
+					return; 
+				}
+				else {
+					var id = "cd"+i.toString();
+					if(i != 3) {
+						var lastid = "cd"+(i+1).toString();
+						document.getElementById(lastid).hidden = true;
+					}				
+					document.getElementById(id).hidden = false;				
+					setTimeout(show,1000);
+					i--;
+				}
+			}
+			show();			
+		}
+
+		function printImgSrc() {
+			var imgSrcStr="<ul>";			
+			imgSrcStr = imgSrcStr + "<li><a target='_new' href='"+resJSON['rockImg'][0]+"'> AI Rock</a>|<a target='_new' href='"+resJSON['rockImg'][1]+"'>Your Rock</a></li>"
+			imgSrcStr = imgSrcStr + "<li><a target='_new' href='"+resJSON['paperImg'][0]+"'> AI Paper</a>|<a target='_new' href='"+resJSON['paperImg'][1]+"'>Your Paper</a></li>"
+			imgSrcStr = imgSrcStr + "<li><a target='_new' href='"+resJSON['sissorImg'][0]+"'> AI Scissor</a>|<a target='_new' href='"+resJSON['sissorImg'][1]+"'>Your Scissor</a></li></ul>"
+			document.getElementById("imgsrc").innerHTML = imgSrcStr;
+		}
+
+		function setCountDownImages() {
+			var basepath = "html/images/set";
+			var baserempath = "/countdown/";
+			var pngs = ["1.png","2.png","3.png"];
+			var randomSet = 1+Math.floor(Math.random()*4);
+			for(i=0;i<3;i++) {
+				document.getElementById("cdi"+i).src = basepath+randomSet+baserempath+pngs[i];
+			}
+		}
+
+		function hideOtherChoices(ui,cr) {
+			if(ui=="rock") {
+				document.getElementById("paperImg1").className += " hidden";
+				document.getElementById("sissorImg1").className += " hidden";
+				document.getElementById("rockImg1").className += " center-block";
+			}
+			else if(ui=="paper") {
+				document.getElementById("rockImg1").className += " hidden";
+				document.getElementById("sissorImg1").className += " hidden";
+				document.getElementById("paperImg1").className += " center-block";
+			}
+			else if(ui=="sissor") {
+				document.getElementById("rockImg1").className += " hidden";
+				document.getElementById("paperImg1").className += " hidden";
+				document.getElementById("sissorImg1").className += " center-block";
+			}
+			if(cr=="rock") {
+				document.getElementById("paperImg0").className += " hidden";
+				document.getElementById("sissorImg0").className += " hidden";
+				document.getElementById("rockImg0").className += " center-block";
+			}
+			else if(cr=="paper") {
+				document.getElementById("rockImg0").className += " hidden";
+				document.getElementById("sissorImg0").className += " hidden";
+				document.getElementById("paperImg0").className += " center-block";
+			}
+			else if(cr=="sissor") {
+				document.getElementById("rockImg0").className += " hidden";
+				document.getElementById("paperImg0").className += " hidden";
+				document.getElementById("sissorImg0").className += " center-block";
+			}
+		}
+
+		function evalIp(ui) {			
+			rpcImageClickTimeStamp = new Date().getTime();
+			var result;
+			if(rpcImageClickTimeStamp - rpcImageDisplayTimeStamp > 2500) {
+				document.getElementById("result").innerHTML = '<h3  class="row text-center bg-warning">Too Late on the trigger</h3>';		
+			}
+			else {
+				var cr = resJSON["computerResponse"].toString();
+				hideOtherChoices(ui,cr);
+				if((ui == "rock" && cr == "sissor") || (ui == "paper" && cr == "rock") || (ui == "sissor" && cr == "paper")) {
+					result = "win";
+					document.getElementById("result").innerHTML = "<h3 class='row text-center bg-warning'>Computer chose "+cr+"!</h3><h1 class='row text-center bg-success'>You Win!</h1>";
+					pscore++;	
+					document.getElementById('pscore').innerHTML =pscore;				
+				}
+				
+				else if((ui == "rock" && cr == "paper") || (ui == "paper" && cr == "sissor") || (ui == "sissor" && cr == "rock")) {
+					result = "loose";
+					document.getElementById("result").innerHTML = "<h3 class='row text-center bg-warning'>Computer chose "+cr+"!</h3><h1 class='row text-center bg-danger'>You Loose!</h1>";
+					cscore++;	
+					document.getElementById('aiscore').innerHTML = cscore;
+				
+				}
+				
+				else if(ui == cr) {
+					result = "draw";
+					document.getElementById("result").innerHTML = "<h4 class='row text-center bg-warning'>Computer also chose "+cr+"!</h4><h1 class='row text-center bg-info'>It's a draw!</h1>";
+				}
+				requestAjax('/postresult?r='+result+'&uc='+ui+'&cc='+cr+'&ht='+hideTable);
+			}
+	
+				document.getElementById("ready").hidden = false;
+				document.getElementById("ready").innerHTML = "&nbsp;<input type='button' class='btn btn-primary' onclick='reset()' value='ANOTHER ROUND!'></input>";
+		}
+
+		function reset() {
+			document.getElementById("ready").innerHTML = "<h3>Loading...</h3>";
+			document.getElementById("RPSImg").innerHTML = "Rendering...";
+			document.getElementById("RPSImg").hidden = true;
+			document.getElementById("imgsrc").innerHTML = "";
+			document.getElementById("RPSInfo").hidden = true;
+			document.getElementById("result").innerHTML = "";
+			document.getElementById("cd1").hidden = true;
+			document.getElementById("cd2").hidden = true;
+			document.getElementById("cd3").hidden = true;
+			requestAjax('/reqRPS');
+		}
+		
+		function showhidescore() {
+			if(hideTable) {
+				document.getElementById("scoretb").className = "table table-condensed hidden";
+				hideTable = false;
+				document.getElementById("showhidescoreh").innerHTML = "Show Score";
+				document.getElementById("showhidescoreh").className = "active";
+			}
+			else {
+				document.getElementById("scoretb").className = "table table-condensed"; 
+				hideTable = true;
+				document.getElementById("showhidescoreh").innerHTML = "Hide Score";
+				document.getElementById("showhidescoreh").className = "";
+			}			
+		}
+		</script>
+	</head>
+<body style="padding-top: 72px;" onload="requestAjax('/reqRPS')">
+<div class="container">
+<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation"> 	
+	<div class="container">
+		
+	 		<a class="navbar-brand" href="/"><img alt="Brand" src="html/images/ico.png" width='160px' height='42px'></a>
+	 	
+		<button class="navbar-toggle" data-toggle="collapse" data-target="#myNav">
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+		</button>	
+		<div class="collapse navbar-collapse" id="myNav">
+			
+		 	<ul class="nav navbar-nav navbar-right">
+		 		<li id='score'><a id='showhidescoreh' href='#' class="main-nav" onclick="showhidescore()">Hide Score</a></li>
+		 		<li id='host'><a href="/host" class="main-nav">Host Game</a></li>
+		 		<li id='join'><a href="/join" class="main-nav">Join Game</a></li>
+				<li id='about'><a href="/about" class="main-nav">About</a></li>
+			</ul>
+		</div>
+	</div>
+</nav>
+<div class="panel panel-default">
+<div class="panel-heading">
+<div class="content row">
+<div class="col-md-4">
+<h2>Single Player:</h2>
+</div>
+<div class="col-md-2"></div>
+<div class="col-md-6">
+	<table id="scoretb" class="table table-condensed">
+	<tr><th>Player</th><th>Score</th></tr>
+	<tr><td>A.I</td><td id="aiscore">0</td></tr>
+	<tr><td>You</td><td id="pscore">0</td></tr>
+	</table>
+</div>
+</div>
+</div>
+<div class="content row">
+<div class="col-md-5"></div>
+<div id="countdown" class="col-md-5">
+<div id="cd1" hidden>
+<img src="" width=240 height=240 id="cdi0">
+</div>
+<div id="cd2" hidden>
+<img src="" width=240 height=240 id="cdi1">
+</div>
+<div id="cd3" hidden>
+<img src="" width=240 height=240 id="cdi2">
+</div>
+<div class="col-md-2"></div>
+</div>
+</div>
+<div class="content row panel-body"> 
+<div class="col-md-1"></div>
+<div id="RPSImg" class="col-md-10" hidden>
+</div>
+<div class="col-md-1"></div>
+</div>
+<div class="content row">
+<div class ="text-center" id="ready">
+<h3>Loading...</h3>
+</div>
+</div>
+<div class="content row panel-body"> <div class="col-md-1"></div>
+<div class="col-md-10" id="result">
+</div>
+<div class="col-md-1"></div>
+</div>
+<div id="RPSInfo" hidden>
+	<p>Image Sources</p>
+	<div id="imgsrc">
+	</div>
+</div>
+</div>
+</div>
+</body>
+</html>

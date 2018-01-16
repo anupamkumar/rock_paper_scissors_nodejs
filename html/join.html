@@ -1,0 +1,134 @@
+<!DOCTYPE HTML>
+<html lang='en'>
+	<head>
+		<meta charset='utf-8'>
+		<meta name="description" content="Rock Paper Scissors Online game">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="keywords" content="Rock, Paper, Scissors, Online, Game, Singleplayer, Multiplayer, chat, lobby, mobile game, HTML5 game">
+		<meta name="author" content="Anupam Kumar">
+		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>	
+		<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>				
+		<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" media="screen"/>
+		<title>Rock Paper Scissors Online | Join A Game</title>		
+	</head>
+	<body style="padding-top: 72px;">
+		<div class="container">
+		<nav class="navbar navbar-inverse navbar-fixed-top"> 	
+			<div class="container">
+		<a class="navbar-brand" href="/"><img alt="Brand" src="html/images/ico.png" width='160px' height='42px'></a>		
+		<button class="navbar-toggle" data-toggle="collapse" data-target="#myNav">
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+	    	<span class="icon-bar"></span>
+		</button>	
+			 <div class="collapse navbar-collapse" id="myNav">
+			 	<ul class="nav navbar-nav navbar-right">
+			 		<li id='host'><a href="/host" class="main-nav">Host Game</a></li>
+			 		<li class="active" id='join'><a href="/join" class="main-nav">Join Game</a></li>
+					<li id='about'><a href="/about" class="main-nav">About</a></li>
+				</ul>
+			</div>
+		</div>
+		</nav>
+		<h3>Hi! Enter the following information to a join multiplayer game</h3>
+		<div class="content-row"><div class="col-md-4"></div>
+            <div class="col-md-4 panel panel-default">
+                <form>
+                    <div id='undiv' class="form-group"><label for="un">Name:</label><input id="un" type="text" class="form-control"/></div>
+                    <div class="form-group"><label for="pa">Age: (optional, but appreciate the info):</label><input id="pa" type="number" class="form-control" /></div>
+                    <div class="form-group">
+					<label for="sex"> Gender: (optional, but appreciate the info)</label><select id="sex" class="form-control"><option value="wonttell">Won't tell</option><option value="male">Male</option><option value="female">Female</option></select>
+					</div>
+					<div class="form-group"><label for="gamecode">Game Code:</label><input id="gamecode" type="number" class="form-control" /></div>
+                    <div class="form-group pull-right"><input id="myjoin" type="button" value="Join" class="btn btn-primary btn-lg btn btn-primary btn-lg" /></div>
+                    <div id="notify"></div>
+                </form>
+            </div><div class="col-md-4"></div>
+    	</div>
+		
+		<script type='text/javascript'>
+			var uname = document.getElementById("un");
+            var pa = document.getElementById("pa");
+            var sex = document.getElementById("sex");
+            var gamecode = document.getElementById("gamecode");
+            var joinbtn = document.getElementById("myjoin");
+            var notify = document.getElementById("notify");
+            var undiv = document.getElementById("undiv");
+			var validUN = false;
+			function sendAJAX(requestURL,callback) {
+				var xmlhttp = new XMLHttpRequest();
+				xmlhttp.onreadystatechange = function() {
+					if(xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+						try {
+							var jsonRes = JSON.parse(xmlhttp.responseText);
+							callback(jsonRes);
+						}
+						catch(error) {
+							alert(error);
+						}
+					}
+				}
+				if(validUN) {
+					xmlhttp.open("GET",requestURL,true);
+					xmlhttp.send();
+				}
+				
+			}
+			
+			uname.addEventListener("blur",function(evt) {                
+                var un = uname.value;
+                console.log(un);
+                if(un.length >= 2) {
+                    undiv.className += " has-success has-feedback";
+                    undiv.insertAdjacentHTML("beforeend", '<span id="mark" class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>');   
+                    validUN = true; 
+                }
+                else {
+                    undiv.className += " has-error has-feedback";
+                    undiv.insertAdjacentHTML("beforeend", '<span id="mark" class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>');
+    				validUN = false;
+                }
+                uname.value = un;
+            });
+
+            uname.addEventListener("focus",function(evt) {                
+                undiv.className = "form-group";
+                var mark = document.getElementById("mark");
+                if(mark !=null) {
+                    mark.parentNode.removeChild(mark);                     
+                }   
+            });
+			
+			joinbtn.addEventListener("click",function(evt) {
+				sendAJAX("/join?n="+uname.value+"&a="+pa.value+"&sex="+sex.value+"&gc="+gamecode.value, function(res) {
+					if(res['status'] == 'OK') {						
+						notify.innerHTML = "";
+						var roomcode = res['roomcode'];
+						var username = uname.value;
+						var form1 = document.createElement("form");
+						var input1 = document.createElement("input");
+						var input2 = document.createElement("input");						
+						form1.action = "/multiplayer";
+						form1.method = "POST";
+						input1.name = "roomcode";
+						input1.value = roomcode;
+						input2.name = "username";
+						input2.value = username;
+						input1.hidden = true;
+						input2.hidden = true;
+						form1.appendChild(input1);
+						form1.appendChild(input2);
+						document.body.appendChild(form1);
+						form1.submit();
+					}
+					else if(res['status'] == 'NOT VALID') {
+						notify.innerHTML = "<strong>Sorry the game code you entered is not valid. Check for the valid Game code from your friend try again.</strong>";
+					}
+				});
+			});
+		</script>
+		</div>
+	</body>
+</html>
